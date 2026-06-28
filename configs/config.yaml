@@ -1,0 +1,162 @@
+# 项目配置文件
+# 遥感综合实习 - 少样本建筑物提取与变化检测
+
+# ==================== 项目信息 ====================
+project:
+  name: "3_fewshot_building_change"
+  description: "多时相影像的少样本建筑物提取与变化检测"
+  author: "遥感综合实习"
+  version: "1.0.0"
+
+# ==================== 数据配置 ====================
+data:
+  train:
+    image: "Dataset/train/train_image_2023_independent_roof.tif"
+    labels: "Dataset/train/buildings_train_independent_roof.shp"
+    aoi: "Dataset/train/train_aoi_independent_roof.shp"
+  test:
+    image_2023: "Dataset/test/test_image_2023_independent_roof.tif"
+    image_2020: "Dataset/test/test_image_2020_independent_roof.tif"
+    aoi: "Dataset/test/test_aoi_independent_roof.shp"
+  crs: "EPSG:4326"
+
+# ==================== 模型配置 ====================
+model:
+  # 主流程模型
+  primary:
+    name: "SAM2"
+    variant: "configs/sam2.1/sam2.1_hiera_b+"
+    checkpoint: "configs/sam2.1_hiera_base_plus.pt"
+    device: "cuda"
+    input_size: 1024
+
+  # 消融实验模型
+  ablation:
+    rs_sam:
+      name: "RS-SAM"
+      checkpoint: "TODO: RS-SAM 权重路径"  # 参考: https://github.com/Lavender105/RS-SAM
+      device: "cuda"
+
+# ==================== 提示策略配置 ====================
+prompt:
+  # 主流程：Box + 正负 Point 混合提示
+  primary:
+    strategy: "box_point_hybrid"
+    box_prompt: true
+    positive_points: true
+    negative_points: true
+    mask_prompt: false
+    num_positive_points: 5
+    num_negative_points: 3
+
+  # 消融实验：纯 Box
+  ablation_box_only:
+    strategy: "box_only"
+    box_prompt: true
+    positive_points: false
+    negative_points: false
+    mask_prompt: false
+
+  # 消融实验：纯 Mask
+  ablation_mask_only:
+    strategy: "mask_only"
+    box_prompt: false
+    positive_points: false
+    negative_points: false
+    mask_prompt: true
+
+# ==================== 微调配置 ====================
+finetune:
+  # 主流程：纯提示无微调
+  primary:
+    enabled: false
+
+  # 消融实验：LoRA 轻量微调
+  ablation_lora:
+    enabled: true
+    method: "LoRA"
+    rank: 16
+    alpha: 32
+    target_modules: ["qkv", "proj"]
+    learning_rate: 1e-4
+    epochs: 10
+    batch_size: 4
+    seed: 42
+
+# ==================== 配准配置 ====================
+registration:
+  # 主流程：SIFT + RANSAC（标准城区）
+  primary:
+    method: "SIFT_RANSAC"
+    max_features: 5000
+    match_ratio: 0.7
+    ransac_threshold: 5.0
+    transform_type: "affine"
+    resampling: "nearest"
+
+  # 消融实验：LoFTR（大面积农田裸地场景）
+  ablation_loftr:
+    method: "LoFTR"
+    checkpoint: "TODO: 补充权重路径"
+    indoor: false
+
+  # 校验场景：ECC（元数据几乎完全对齐）
+  validation_ecc:
+    method: "ECC"
+    max_iterations: 200
+    termination_eps: 1e-5
+    transform_type: "euclidean"
+
+# ==================== 变化检测配置 ====================
+change_detection:
+  # 新增：2023=1 AND 2020=0
+  added:
+    condition: "building_2023 == 1 AND building_2020 == 0"
+  # 拆除：2020=1 AND 2023=0
+  removed:
+    condition: "building_2020 == 1 AND building_2023 == 0"
+  # XOR 变化候选
+  xor:
+    condition: "XOR(building_2020, building_2023)"
+
+# ==================== 形态学清洗配置 ====================
+morphology:
+  min_area_m2: 30.0          # 最小面积（平方米）
+  min_pixels: 50             # 最小像素数
+  struct_element_size: 5     # 结构元素大小
+  fill_holes: true           # 是否填充孔洞
+  smooth_boundary: true      # 是否平滑边界
+  connectivity: 8            # 连通域分析连通性
+
+# ==================== 输出配置 ====================
+output:
+  masks:
+    pseudo_label: "results/masks/pseudo_label.tif"
+    building_2023: "results/masks/building_2023.tif"
+    building_2020: "results/masks/building_2020.tif"
+  change:
+    added_raw: "results/masks/change_added_raw.tif"
+    removed_raw: "results/masks/change_removed_raw.tif"
+    xor_raw: "results/masks/change_xor_raw.tif"
+  vectors:
+    building_change: "results/vectors/building_change.shp"
+  figures:
+    base_dir: "results/figures"
+  metrics:
+    base_dir: "results/metrics"
+
+# ==================== 评估配置 ====================
+evaluation:
+  metrics:
+    - "IoU"
+    - "precision"
+    - "recall"
+    - "F1"
+    - "漏检率"  # False Negative Rate
+  typical_regions:
+    dense_building: "TODO: 定义密集建筑区域范围"
+    sparse_building: "TODO: 定义稀疏建筑区域范围"
+    confusing_objects: "TODO: 定义易混淆地物区域范围"
+
+# ==================== 随机种子 ====================
+seed: 42

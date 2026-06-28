@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model weights (large files)
+*.pt
+*.pth
+*.onnx
+*.bin
+configs/*.pt
+
+# Large data files
+data/*.tif
+data/*.tiff
+data/*.shp
+data/*.dbf
+data/*.shx
+data/*.prj
+data/*.cpg
+
+# Results (large rasters)
+results/masks/*.tif
+results/vectors/*.shp
+results/vectors/*.dbf
+results/vectors/*.shx
+results/vectors/*.prj
+results/vectors/*.cpg
+
+# Keep directory structure
+!results/*/.gitkeep
+!data/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary
+*.tmp
+*.bak
